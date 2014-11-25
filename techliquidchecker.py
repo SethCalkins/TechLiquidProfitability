@@ -9,7 +9,7 @@ prevlink = 0
 
 with open('output.csv', 'w', newline='') as csvfile: ##opens output.csv as a writable file
     csvwriter = csv.writer(csvfile, dialect='excel') ##CSVwriter as excel
-    csvwriter.writerow(['Auction Name', 'Current Bid', 'Quantity','Product','MSRP','Market', 'Revenue', 'Auction Revenue', 'Profitability', '', 'Auction Link', 'Manifest Link']) ## makes headers
+    csvwriter.writerow(['Auction Name', 'Current Bid', 'Quantity','Product','MSRP','Market', 'Revenue', 'Auction Revenue', 'Profit', '', 'Auction Link', 'Market Link']) ## makes headers
     for link in soup.find_all('a'): #finds all links
         if ((str(link.get('href'))).find('index.cfm/p/34')) != -1 and link.get('href') != prevlink: ##makes sure it fits criteria, then does all that
             prevlink = link.get('href')
@@ -38,8 +38,10 @@ with open('output.csv', 'w', newline='') as csvfile: ##opens output.csv as a wri
 
             manifest_extract = str(manifest_extract)[str(manifest_extract).find('Total MSRP') + 17:] ##delete preliminary info
 
-            
-            while(str(manifest_extract).startswith('<td></td>') == False):
+            auctionrevenue = 0 ##reset auction revenue
+            profit = 0
+            while(str(manifest_extract).startswith('<td></td>') == False): ##Loops through and extracts the information from the manifest
+                itemrevenue = 0 ##reset item revenue
 
                 quantity = str(manifest_extract)[4:str(manifest_extract).find('>, ') - 4]
                 manifest_extract = str(manifest_extract)[str(manifest_extract).find('>,') + 3:]
@@ -67,25 +69,40 @@ with open('output.csv', 'w', newline='') as csvfile: ##opens output.csv as a wri
                 itemname = str(itemname).replace('feat.', '+')
                 itemname = str(itemname).replace('/', '+')
                 itemname = str(itemname).replace(' ', '+')
-                itemname = str(itemname)[str(itemname).find('ipad'):] ##deletes model number prefix
+                if 'ipad' in str(itemname): 
+                    itemname = str(itemname)[str(itemname).find('ipad'):] ##deletes model number prefix
                 try:
                     listingurl = ('http://www.thepricegeek.com/results/' + str(itemname) + '?country=us')
-                    listingprice = BeautifulSoup(urllib.request.urlopen(listingurl))
-                    listingprice = str((listingprice.find_all(class_="median")))[20:27]
-                    if(str(listingprice) == ''):
-                        listingprice = 'NOTFOUND'
+                    marketprice = BeautifulSoup(urllib.request.urlopen(listingurl))
+                    marketprice = str((marketprice.find_all(class_="median")))[20:27]
+                    marketprice = str(marketprice).replace('$','')
+                    marketprice = str(marketprice).replace('<','')
+                    marketprice = str(marketprice).replace('/','') ##clean up price
+
+                    if(str(marketprice) == ''):
+                        marketprice = 'NOTFOUND'
                         ##print('http://www.thepricegeek.com/results/' + str(itemname) + '?country=us')
                 except urllib.error.HTTPError:
-                    listingprice = 'HTTPERROR'
+                    marketprice = 'HTTPERROR'
                     ##print('http://www.thepricegeek.com/results/' + str(itemname) + '?country=us')
                 except UnicodeEncodeError:
                     ##print('http://www.thepricegeek.com/results/' + str(itemname) + '?country=us')
                     break ##i dont know
                 except urllib.error.URLError:
                     break
-                
+                try:
+                    if(marketprice != 'NOTFOUND'):
+                        itemrevenue = int(quantity) * float(marketprice)
+                        auctionrevenue = auctionrevenue + itemrevenue
+                    profit = auctionrevenue - int(currentbid)
+                except ValueError:
+                    print('Error')
                 
 
-                print('Auction: ' + str(auctionname) + ' Quantity: ' + str(quantity) + ' Product: ' + str(name) + ' MSRP: ' + str(msrp) + ' Market: ' + str(listingprice))
-                csvwriter.writerow([str(auctionname), str(currentbid),str(quantity), str(name), str(msrp), str(listingprice), 'TBD', 'TBD', 'TBD', '', str(prevlink), str(listingurl)])
+                print('Auction: ' + str(auctionname) + ' Quantity: ' + str(quantity) + ' Product: ' + str(name) + ' MSRP: ' + str(msrp) + ' Market: ' + str(marketprice))
+                ##                  Auction Name',      'Current Bid',   'Quantity',  'Product',  'MSRP',        Market',     'Revenue',          'Auction Revenue',          'Profit', '', 'Auction Link', 'Market Link'])
+                csvwriter.writerow([str(auctionname), str(currentbid),str(quantity), str(name),    str(msrp), str(marketprice), str(itemrevenue),   str(auctionrevenue),       str(profit),     '' , str(prevlink), str(listingurl)])
+            csvwriter.writerow(['','','','','','','','','','','',''])##blank seperation row
+
 print("\n\n Execution Complete")
+input("Press Enter to continue...")
