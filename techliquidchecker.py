@@ -9,8 +9,10 @@ import csv
 
 mainlink = urllib.request.urlopen('http://techliquidators.com/index.cfm?p=4&sorttype=11&categories=0&sizes=1&condition=0&location=0&vhr=&vhi=&bc=1&maxrows=100')
 mainlink = BeautifulSoup(mainlink)
-count = 1
+count = 0
 prevlink = ''
+numfail = 0
+numsucc = 0
 
 with open('output.csv', 'w', newline='') as csvfile: ##opens output.csv as a writable file
     csvwriter = csv.writer(csvfile, dialect='excel') ##CSVwriter as excel
@@ -24,17 +26,14 @@ with open('output.csv', 'w', newline='') as csvfile: ##opens output.csv as a wri
 
             auctionname = man.title
             auctionname = str(auctionname)[7:len(auctionname) - 9] ##finds the auction name
-            auctionname = str(auctionname).replace('&amp;', '+')
-            auctionname = str(auctionname).replace(';','')
+            auctionname = str(auctionname).replace('&amp;', '+').replace(';','')
 
             currentbid = str(man)[str(man).find('Current Bid:') + 170:str(man).find('Current Bid:') + 176]
-            print ('\nCurrent Bid: ' + str(currentbid))
+            ##print ('\nCurrent Bid: ' + str(currentbid))
 
             manifest = str(man)[str(man).find('id="urlManifestHTM"') + 63:]##extracts manifest link
             manifest = str(manifest)[:str(manifest).find('.htm') + 4]
             manifest_trimmed = 'http://techliquidators.com' + str(manifest) ## finalizes manifest link
-
-            count = count + 1
 
             manifest_downloaded = urllib.request.urlopen(manifest_trimmed)
             manifest_downloaded = BeautifulSoup(manifest_downloaded) ##download and put into beautiful soup the manifest
@@ -44,6 +43,7 @@ with open('output.csv', 'w', newline='') as csvfile: ##opens output.csv as a wri
 
             auctionrevenue = 0 ##reset auction revenue
             profit = 0
+            count = count + 1
             while(str(manifest_extract).startswith('<td></td>') == False): ##Loops through and extracts the information from the manifest
                 itemrevenue = 0 ##reset item revenue
 
@@ -69,10 +69,11 @@ with open('output.csv', 'w', newline='') as csvfile: ##opens output.csv as a wri
                 
                 ##wall of replacements
                 itemname = name.lower()
-                itemname = str(itemname).replace('-', '+').replace('at&amp;t;', 'att').replace('"', '+').replace('feat.', '+').replace('/', '+').replace(' ', '+')
+                itemname = str(itemname).replace('-', '+').replace('at&amp;t;', 'att').replace('"', '+').replace('feat.', '+').replace('/', '+').replace(' ', '+').replace('-bl','').replace('-wh','')
+                
                 if 'ipad' in str(itemname):
                     itemname = str(itemname)[str(itemname).find('ipad'):] ##deletes model number prefix
-                if 'intel core' in str(itemname) or 'amd' in str(itemname):
+                if 'intel' in str(itemname) or 'amd' in str(itemname):
                     itemname = str(partnum) ##if a laptop, the part number is used instead of item name
                 try:
                     listingurl = ('http://www.thepricegeek.com/results/' + str(itemname) + '?country=us')
@@ -82,25 +83,31 @@ with open('output.csv', 'w', newline='') as csvfile: ##opens output.csv as a wri
 
                     if(str(marketprice) == ''):
                         marketprice = 'NOTFOUND'
+                        numfail +=1
                 except urllib.error.HTTPError:
                     marketprice = 'HTTPERROR'
+                    numfail +=1
                 except UnicodeEncodeError:
                     marketprice = 'HTTPERROR'
+                    numfail += 1
                 except urllib.error.URLError:
                     marketprice = 'HTTPERROR'
+                    numfail +=1
                 try:
                     if(marketprice != 'NOTFOUND' and marketprice != 'NOTFOUND'):
                         itemrevenue = int(quantity) * float(marketprice)
                         auctionrevenue = auctionrevenue + itemrevenue
-                        profit = auctionrevenue - int(currentbid) + 2
+                        profit = float(auctionrevenue) - float(currentbid) + 2
                 except ValueError:
                     print('Error')
                 
 
-                print('Auction: ' + str(auctionname) + ' Quantity: ' + str(quantity) + ' Product: ' + str(name) + ' MSRP: ' + str(msrp) + ' Market: ' + str(marketprice))
+                print('Auction: ' + str(auctionname) + ' Current Bid: ' + str(currentbid) + ' Quantity: ' + str(quantity) + ' Product: ' + str(name) + '\n \tMSRP: ' + str(msrp) + ' Market: ' + str(marketprice))
                 ##                  Auction Name',      'Current Bid',   'Quantity',  'Product',  'MSRP',        Market',     'Revenue',          'Auction Revenue',          'Profit', '', 'Auction Link', 'Market Link'])
                 csvwriter.writerow([str(auctionname), str(currentbid),str(quantity), str(name),    str(msrp), str(marketprice), str(itemrevenue),   str(auctionrevenue),       str(profit),     '' , str(prevlink), str(listingurl)])
             csvwriter.writerow(['','','','','','','','','','','',''])##blank seperation row
 
-print("\n\n Execution Complete")
+    numsucc = count - numfail
+    csvwriter.writerow(['Stats', 'Number Failed: ' + str(numfail), 'Number Succeeded: ' + str(numsucc)])
+print("\n\n Execution Complete. " + str(numfail) + " failed searches.")
 input("Press Enter to continue...")
