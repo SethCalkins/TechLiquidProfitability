@@ -8,6 +8,7 @@ import urllib.request
 import csv
 
 ans = True
+start = True
 numfail = 0
 count = 0
 revenue = 0
@@ -28,6 +29,40 @@ prevlink = 0
 
 mainlink = urllib.request.urlopen('http://techliquidators.com/index.cfm?p=4&sorttype=11&categories=0&sizes=1&condition=0&location=0&vhr=&vhi=&bc=1&maxrows=100')
 mainlink = BeautifulSoup(mainlink)
+
+def asciiart():
+    print("""                            
+                                                        (|
+                                                        ||_
+                                                       =///`\\
+                                  (\                   \\\\) |
+                                 __\\\\                   `|~~|
+                                (((<_|            ____   |  |
+                                 `-__/\         /~    ~\|   |
+                                    \  ~-_     |--|     |___|
+                                     `\   ~-_  |_/     /--__/
+                                       `\/ / ~-_\___--/    /
+                                         `-_    ~/   /    /
+                                            ~-_ /   |   _/
+                                               |         |
+                                              |~~~~~-----|
+                                              |___----~~~/
+                   _-~~\                       \_       /
+                 /(_|_-~                       |       /
+               /   /~==[]\     ____-------_    |_____--|   ______________
+             /    (_ //(\0)~~~~ TECHDEMAND  ~\ /_-       \/'         ___/ ~~~~/
+            (|      ~~--__                   |/         )_____---~~~    Y2K  \\
+             \.      ___  ~~--__ ____        /        _-/              __--~~'
+               ~\    \\\\\\\\       ~~-_ ~-____ /      _-~~          __--~~___
+          _ ----/ \    \\\\\\\\         ~-_    /---__-~        __--~~----~~_  ]=
+       _-~ ___ / /__\   ~~~            ~-_ ( )-~ ~-_~~~/~~~ _-~         ~-_
+      /-~~~_-|/ /    ~\                  _) ~-_     \ /~~~~~---__-----_    \\
+     ;    / \/_//`\    \           __--~~/_   \~-_ _-\ ~~~~~~~~~~~~-/_/\    .
+     |   | \((*))/ |   |\    __--~~     /o \   `\ ~-  `\----_____( 0) ) |   |
+     |    \  |~|  /    | )-~~           \ 0 )    |/' _-~/~--------| |~ /    ,
+      \    ~-----~    / /                ~~~~~~~~/_/O_/'   \    ~-----~    /
+       ~-_         _-~ `---------------------------'        `-_         _-~
+          ~ ----- ~                                            ~ ----- ~  """)
 
 def pageparser():
     global numfail
@@ -118,6 +153,7 @@ def pricelookup(link, option):
             itemname = str(itemname)[str(itemname).find('ipad'):] ##deletes model number prefix
         if 'intel' in str(itemname) or 'amd' in str(itemname):
             itemname = str(partnum) ##if a laptop, the part number is used instead of item name
+            itemname = str(itemname).replace('/','%')
         try:
             listingurl = ('http://www.thepricegeek.com/results/' + str(itemname) + '?country=us')
             marketprice = BeautifulSoup(urllib.request.urlopen(listingurl))
@@ -146,11 +182,10 @@ def pricelookup(link, option):
             pass
         
 
-        print('Quantity: ' + str(quantity) + ' Product: ' + str(name) + ' MSRP: ' + str(msrp) + ' Market: ' + str(marketprice))
+        print('\tQuantity: ' + str(quantity) + ' Product: ' + str(name) + ' MSRP: ' + str(msrp) + ' Market: ' + str(marketprice))
         csvprint(auctionname, float(currentbid), quantity, name, msrp, marketprice, itemrevenue, auctionrevenue, profit, prevlink, listingurl)
            
-        if(option == 1):
-            stats(count, numfail, auctionrevenue, profit)
+        
 
 def stats(count, numfail, revenue, profit):
     if(revenue == 0 or profit == 0):
@@ -164,22 +199,34 @@ def csvprint(auctionname, currentbid, quantity, name, msrp, marketprice, itemrev
 
 
 while ans:
-    print ("""
-    1.Run Small Quantity Parser
-    2.Enter a link to determine profitability
-    "q" to quit
-    """)
-    ans=input("What would you like to do? ") 
-    if ans=="1": 
-      print("\nRunning")
-      with open('output.csv', 'w', newline='') as csvfile: ##opens output.csv as a writable file
-          csvwriter = csv.writer(csvfile, dialect='excel')
-          pageparser()
-          stats(count, numfail, 0, 0)
-    elif ans=="2":
-      link = input("\nEnter TechLiquid Auction Link: ")
-      pricelookup(link, 1)
-    elif ans=="q":
-        break
-    elif ans !="":
-      print("\nNot Valid Choice Try again") 
+    ##reset variables
+    numfail = 0
+    count = 0
+    if(start == True):
+        asciiart()
+    with open('output.csv', 'w', newline='') as csvfile: ##opens output.csv as a writable file
+        csvwriter = csv.writer(csvfile, dialect='excel')
+        print ("""
+        ================================================================
+        || Tech Liquid Profitability Calculator                       ||
+        ||   By Jason Ashton                                          ||
+        ||                                                            ||
+        || 1.Run Small Quantity Parser                                ||
+        || 2.Enter a link to determine profitability                  ||
+        || "q" to quit                                                ||
+        ================================================================
+        """)
+        ans=input("What would you like to do? ")
+        start = False
+        if ans=="1": 
+            print("\nRunning")
+            pageparser()
+            stats(count, numfail, 0, 0)
+        elif ans=="2":
+            link = input("\nEnter TechLiquid Auction Link: ")
+            pricelookup(link, 1)
+            stats(count, numfail, auctionrevenue, profit)
+        elif ans=="q":
+            break
+        elif ans !="":
+            print("\nNot Valid Choice Try again") 
