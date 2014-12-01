@@ -1,3 +1,10 @@
+'''
+Tech Liquid Profitability Calculator
+Jason Ashton, 2014
+
+Determines the profitability of techliquidators listings based on thepricegeek.com
+
+'''
 import sys
 if sys.version_info<(3,4,0):
   sys.stderr.write("You need python 3.4 or later to run this script\n")
@@ -27,8 +34,6 @@ count = 0
 numfail = 0
 prevlink = 0
 
-mainlink = urllib.request.urlopen('http://techliquidators.com/index.cfm?p=4&sorttype=11&categories=0&sizes=1&condition=0&location=0&vhr=&vhi=&bc=1&maxrows=100')
-mainlink = BeautifulSoup(mainlink)
 
 def asciiart():
     print("""                            
@@ -79,7 +84,6 @@ def pageparser():
             prevlink = link.get('href')
             pricelookup(prevlink, 0)
 
-                    ##              Auction Name',      'Current Bid',   'Quantity',  'Product',  'MSRP',        Market',     'Revenue',          'Auction Revenue',          'Profit', '', 'Auction Link', 'Market Link'])
             csvprint('','','','','','','','','','','')##blank seperation row
 
     stats(count, numfail, 0, 0)
@@ -98,8 +102,7 @@ def pricelookup(link, option):
     global profit
     global listingurl
 
-    man_doc=urllib.request.urlopen(link)
-    man = BeautifulSoup(man_doc)##downloads this listing
+    man = BeautifulSoup(urllib.request.urlopen(link))##downloads this listing
 
     auctionname = man.title
     auctionname = str(auctionname)[7:len(auctionname) - 9] ##finds the auction name
@@ -113,8 +116,7 @@ def pricelookup(link, option):
     manifest = str(manifest)[:str(manifest).find('.htm') + 4]
     manifest_trimmed = 'http://techliquidators.com' + str(manifest) ## finalizes manifest link
 
-    manifest_downloaded = urllib.request.urlopen(manifest_trimmed)
-    manifest_downloaded = BeautifulSoup(manifest_downloaded) ##download and put into beautiful soup the manifest
+    manifest_downloaded = BeautifulSoup(urllib.request.urlopen(manifest_trimmed)) ##download and put into beautiful soup the manifest
     manifest_downloaded.prettify()
     manifest_extract = manifest_downloaded.find_all('td')
     manifest_extract = str(manifest_extract)[str(manifest_extract).find('Total MSRP') + 17:] ##delete preliminary info
@@ -185,8 +187,6 @@ def pricelookup(link, option):
         print('\tQuantity: ' + str(quantity) + ' Product: ' + str(name) + ' MSRP: ' + str(msrp) + ' Market: ' + str(marketprice))
         csvprint(auctionname, float(currentbid), quantity, name, msrp, marketprice, itemrevenue, auctionrevenue, profit, prevlink, listingurl)
            
-        
-
 def stats(count, numfail, revenue, profit):
     if(revenue == 0 or profit == 0):
         print('\nStats:\nCheck Output for More Details\nNumber of Failed Searches: ' + str(numfail) + ' Total Searches: ' + str(count))
@@ -220,6 +220,7 @@ while ans:
         start = False
         if ans=="1": 
             print("\nRunning")
+            mainlink = BeautifulSoup(urllib.request.urlopen('http://bit.ly/12iE2Nw'))
             pageparser()
             stats(count, numfail, 0, 0)
         elif ans=="2":
